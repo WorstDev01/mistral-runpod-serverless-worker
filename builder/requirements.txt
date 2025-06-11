@@ -1,12 +1,5 @@
 # Required Python packages get listed here, one per line.
 # Reccomended to lock the version number to avoid unexpected changes.
 
-runpod==1.7.9
-vllm==0.8.5.post1
-
-# Moved to separate Dockerfile step because of requirements problems
-#--extra-index-url https://flashinfer.ai/whl/cu124/torch2.6/
-#flashinfer-python==0.2.5
-
-# Quants
-bitsandbytes>=0.45.5
+runpod==1.7.10
+vllm==0.9.1
