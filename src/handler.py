@@ -91,7 +91,7 @@ def create_sampling_params(batch_data):
     return SamplingParams(**params)
 
 
-async def handler(job):
+def handler(job):  # Removed async - not needed
     try:
         input_data = job["input"]
 
@@ -100,19 +100,16 @@ async def handler(job):
 
         # Handle prewarm
         if "prewarm" in input_data:
-            yield {"warm": True}
-            return
+            return {"warm": True}
 
         # Get batch requests
         if "batch" not in input_data:
-            yield {"error": "Expected 'batch' key with list of requests"}
-            return
+            return {"error": "Expected 'batch' key with list of requests"}
 
         batch_requests = input_data["batch"]
 
         if not batch_requests:
-            yield {"error": "Batch requests list is empty"}
-            return
+            return {"error": "Batch requests list is empty"}
 
         # Process requests
         prompts = process_batch_requests(batch_requests)
@@ -123,8 +120,7 @@ async def handler(job):
         # Validate prompts are all strings
         for i, prompt in enumerate(prompts):
             if not isinstance(prompt, str):
-                yield {"error": f"Prompt at index {i} is not a string: {type(prompt)}"}
-                return
+                return {"error": f"Prompt at index {i} is not a string: {type(prompt)}"}  #
 
         sampling_params = create_sampling_params(batch_requests)
 
@@ -142,11 +138,12 @@ async def handler(job):
             }
             results.append(result)
 
-        yield {"results": results}
+        print(f"Successfully generated {len(results)} results")  # Debug log
+        return {"results": results}
 
     except Exception as e:
         print(f"Error in handler: {str(e)}")
-        yield {"error": str(e)}
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
