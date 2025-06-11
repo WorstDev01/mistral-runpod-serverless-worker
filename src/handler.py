@@ -27,14 +27,15 @@ def initialize_llm(input_data):
         if "engine_args" in input_data:
             engine_args.update(input_data["engine_args"])
 
-        # Model should be set via VLLM_MODEL environment variable in Dockerfile
-
         # Set other defaults if not provided
         if "trust_remote_code" not in engine_args:
             engine_args["trust_remote_code"] = True
 
         llm = LLM(**engine_args)
-        print('─' * 20, "--- VLLM engine and model cold start initialization took %s seconds ---" % (time.time() - start_time), '─' * 20, "*Unfortunately, this time is being billed.", sep=os.linesep)
+        print('─' * 20,
+              "--- VLLM engine and model cold start initialization took %s seconds ---" % (time.time() - start_time),
+              '─' * 20, "*Unfortunately, this time is being billed.", sep=os.linesep)
+
 
 def process_batch_requests(batch_data):
     """Convert batch requests to vLLM format"""
@@ -42,30 +43,37 @@ def process_batch_requests(batch_data):
 
     for request in batch_data:
         if "messages" in request:
-            # Handle chat format
+            # Handle chat format - convert to simple text for now
             messages = request["messages"]
-            prompt = []
+            text_parts = []
 
             for message in messages:
-                if message.get("role") == "user":
-                    content = message.get("content", "")
+                role = message.get("role", "")
+                content = message.get("content", "")
 
-                    if isinstance(content, list):
-                        # Multimodal content (text + images)
-                        for item in content:
-                            if item.get("type") == "text":
-                                prompt.append(item["text"])
-                            elif item.get("type") == "image_url":
-                                prompt.append({"type": "image", "image": item["image_url"]["url"]})
-                    else:
-                        # Simple text
-                        prompt.append(content)
+                if isinstance(content, list):
+                    # Extract text from multimodal content
+                    for item in content:
+                        if item.get("type") == "text":
+                            text_parts.append(f"{role}: {item['text']}")
+                        # Note: For image handling, you'd need to process images differently
+                        # This is a simplified version that only handles text
+                else:
+                    # Simple text content
+                    text_parts.append(f"{role}: {content}")
 
-            prompts.append(prompt)
+            # Join all messages into a single prompt string
+            prompt_text = "\n".join(text_parts)
+            prompts.append(prompt_text)
 
         elif "prompt" in request:
             # Handle simple prompt format
-            prompts.append(request["prompt"])
+            prompt = request["prompt"]
+            if isinstance(prompt, str):
+                prompts.append(prompt)
+            else:
+                # Convert to string if it's not already
+                prompts.append(str(prompt))
 
     return prompts
 
@@ -102,8 +110,22 @@ async def handler(job):
 
         batch_requests = input_data["batch"]
 
+        if not batch_requests:
+            yield {"error": "Batch requests list is empty"}
+            return
+
         # Process requests
         prompts = process_batch_requests(batch_requests)
+
+        # Debug: Print prompts to see what we're sending to vLLM
+        print(f"Processed prompts: {prompts}")
+
+        # Validate prompts are all strings
+        for i, prompt in enumerate(prompts):
+            if not isinstance(prompt, str):
+                yield {"error": f"Prompt at index {i} is not a string: {type(prompt)}"}
+                return
+
         sampling_params = create_sampling_params(batch_requests)
 
         # Generate responses
@@ -123,6 +145,7 @@ async def handler(job):
         yield {"results": results}
 
     except Exception as e:
+        print(f"Error in handler: {str(e)}")
         yield {"error": str(e)}
 
 
