@@ -7,7 +7,10 @@ RUN . /clone.sh /workspace/models/InternVL3-1B https://huggingface.co/OpenGVLab/
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_PREFER_BINARY=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TORCHDYNAMO_DISABLE=1 \
+    VLLM_USE_CUDAGRAPH=0 \
+    VLLM_DISABLE_COMPILE_CACHE=1
 
 # Install system packages
 RUN apt-get update && \
@@ -27,6 +30,7 @@ COPY src/handler.py .
 
 # Set default environment variables
 ENV VLLM_MODEL=/workspace/models/InternVL3-1B \
-    VLLM_TRUST_REMOTE_CODE=true
+    VLLM_TRUST_REMOTE_CODE=true \
+    VLLM_ENFORCE_EAGER=true
 
 CMD ["python3", "handler.py"]
