@@ -1,7 +1,7 @@
 # Clone model
 FROM alpine/git:2.47.2 AS clone
 COPY builder/clone.sh /clone.sh
-RUN . /clone.sh /workspace/models/InternVL3-1B https://huggingface.co/OpenGVLab/InternVL3-1B main
+RUN . /clone.sh /workspace/models/InternVL3-14B https://huggingface.co/OpenGVLab/InternVL3-14B main
 
 # Build final image
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
@@ -27,7 +27,7 @@ WORKDIR /src
 COPY src/handler.py .
 
 # Set default environment variables
-ENV VLLM_MODEL=/workspace/models/InternVL3-1B \
+ENV VLLM_MODEL=/workspace/models/InternVL3-14B \
     VLLM_TRUST_REMOTE_CODE=true \
     ENFORCE_EAGER=true
 
