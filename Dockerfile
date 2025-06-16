@@ -8,8 +8,8 @@ FROM nvidia/cuda:12.4.1-base-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_PREFER_BINARY=1 \
     PYTHONUNBUFFERED=1 \
+    VLLM_USE_PRECOMPILED=true \
     TORCHDYNAMO_DISABLE=1 \
-    VLLM_USE_CUDAGRAPH=0 \
     VLLM_DISABLE_COMPILE_CACHE=1
 
 # Install system packages
