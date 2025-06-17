@@ -29,6 +29,6 @@ COPY src/handler.py .
 # Set default environment variables
 ENV VLLM_MODEL=/workspace/models/InternVL3-14B \
     VLLM_TRUST_REMOTE_CODE=true \
-    ENFORCE_EAGER=true
+    VLLM_ENFORCE_EAGER=true
 
 CMD ["python3", "handler.py"]
