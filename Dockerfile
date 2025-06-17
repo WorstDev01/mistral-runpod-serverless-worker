@@ -17,7 +17,7 @@ RUN apt-get update && \
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install vllm runpod
+    pip install vllm runpod pillow
 
 # Copy model from clone stage
 COPY --from=clone /workspace/models /workspace/models
@@ -29,6 +29,7 @@ COPY src/handler.py .
 # Set default environment variables
 ENV VLLM_MODEL=/workspace/models/InternVL3-14B \
     VLLM_TRUST_REMOTE_CODE=true \
-    VLLM_ENFORCE_EAGER=true
+    VLLM_ENFORCE_EAGER=true \
+    VLLM_LIMIT_MM_PER_PROMPT="{\"image\": 1, \"video\": 0}"
 
 CMD ["python3", "handler.py"]
