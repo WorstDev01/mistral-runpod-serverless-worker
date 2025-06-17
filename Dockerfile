@@ -1,7 +1,7 @@
 # Clone model
 FROM alpine/git:2.47.2 AS clone
-COPY builder/clone.sh /clone.sh
-RUN . /clone.sh /workspace/models/InternVL3-14B https://huggingface.co/OpenGVLab/InternVL3-14B main
+COPY clone.sh /clone.sh
+RUN . /clone.sh /workspace/models/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 https://huggingface.co/RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 main
 
 # Build final image
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
@@ -17,7 +17,7 @@ RUN apt-get update && \
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install vllm runpod pillow
+    pip install vllm runpod
 
 # Copy model from clone stage
 COPY --from=clone /workspace/models /workspace/models
@@ -27,9 +27,10 @@ WORKDIR /src
 COPY src/handler.py .
 
 # Set default environment variables
-ENV VLLM_MODEL=/workspace/models/InternVL3-14B \
+ENV VLLM_MODEL=/workspace/models/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 \
     VLLM_TRUST_REMOTE_CODE=true \
     VLLM_ENFORCE_EAGER=true \
-    VLLM_LIMIT_MM_PER_PROMPT="{\"image\": 1, \"video\": 0}"
+    VLLM_QUANTIZATION=compressed-tensors \
+    VLLM_MAX_MODEL_LEN=8192
 
 CMD ["python3", "handler.py"]
