@@ -1,7 +1,7 @@
 # Clone model
 FROM alpine/git:2.47.2 AS clone
 COPY clone.sh /clone.sh
-RUN . /clone.sh /workspace/models/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 https://huggingface.co/RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 main
+RUN . /clone.sh /workspace/models/Mistral-Small https://huggingface.co/RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 main
 
 # Build final image
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
@@ -27,7 +27,7 @@ WORKDIR /src
 COPY src/handler.py .
 
 # Set default environment variables
-ENV VLLM_MODEL=/workspace/models/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 \
+ENV VLLM_MODEL=/workspace/models/Mistral-Small \
     VLLM_TRUST_REMOTE_CODE=true \
     VLLM_ENFORCE_EAGER=true \
     VLLM_QUANTIZATION=compressed-tensors \
