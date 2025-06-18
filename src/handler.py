@@ -14,18 +14,20 @@ def initialize_llm(input_data):
         print("Initializing VLLM...")
         start_time = time.time()
 
-        # Get engine args from environment or input
-        engine_args = {}
+        # Hardcoded VLLM engine arguments
+        engine_args = {
+            "model": "/workspace/models/Mistral-Small",  # !! Falls ich was ändere in Dockefile, hier auch ändern !!!
+            "trust_remote_code": True,
+            "enforce_eager": True,
+            "quantization": "compressed-tensors",
+            "max_model_len": 8192,
+        }
 
-        # Load from environment variables
-        for key, value in os.environ.items():
-            if key.startswith("VLLM_"):
-                param_name = key.replace("VLLM_", "").lower()
-                engine_args[param_name] = value
-
-        # Override with input args if provided
+        # Override with input args if provided (allows runtime customization)
         if "engine_args" in input_data:
             engine_args.update(input_data["engine_args"])
+
+        print(f"Engine args: {engine_args}")  # Debug print
 
         llm = LLM(**engine_args)
         print('─' * 20,
@@ -132,7 +134,8 @@ def handler(job):
                 "text": output.outputs[0].text,
                 "finish_reason": output.outputs[0].finish_reason,
                 "prompt_tokens": len(output.prompt_token_ids) if hasattr(output, 'prompt_token_ids') else None,
-                "completion_tokens": len(output.outputs[0].token_ids) if hasattr(output.outputs[0], 'token_ids') else None
+                "completion_tokens": len(output.outputs[0].token_ids) if hasattr(output.outputs[0],
+                                                                                 'token_ids') else None
             }
             results.append(result)
 

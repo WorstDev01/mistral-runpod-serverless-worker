@@ -19,19 +19,11 @@ RUN python3 -c "\
 from huggingface_hub import snapshot_download; \
 snapshot_download( \
     'RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8', \
-    cache_dir='/workspace/models', \
-    local_dir='/workspace/models/Mistral-Small', \
-    local_dir_use_symlinks=False \
+    local_dir='/workspace/models/Mistral-Small' \
 )"
 
 # Copy handler
 WORKDIR /src
 COPY src/handler.py .
-
-ENV VLLM_MODEL=/workspace/models/Mistral-Small \
-    VLLM_TRUST_REMOTE_CODE=true \
-    VLLM_ENFORCE_EAGER=true \
-    VLLM_QUANTIZATION=compressed-tensors \
-    VLLM_MAX_MODEL_LEN=8192
 
 CMD ["python3", "handler.py"]
