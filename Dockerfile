@@ -14,7 +14,14 @@ RUN pip install --upgrade pip && \
     pip install vllm runpod huggingface-hub
 
 # Download model using huggingface-hub (more efficient than git)
-RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download('RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8', cache_dir='/workspace/models', local_dir='/workspace/models/Mistral-Small')"
+RUN python3 -c "
+from huggingface_hub import snapshot_download
+snapshot_download(
+    'RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8',
+    cache_dir='/workspace/models',
+    local_dir='/workspace/models/Mistral-Small',
+    local_dir_use_symlinks=False
+)"
 
 # Copy handler
 WORKDIR /src
