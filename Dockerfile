@@ -1,9 +1,3 @@
-# Clone model
-FROM alpine/git:2.47.2 AS clone
-COPY clone.sh /clone.sh
-RUN . /clone.sh /workspace/models/Mistral-Small https://huggingface.co/RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8 main
-
-# Build final image
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     TORCHDYNAMO_DISABLE=1 \
@@ -17,16 +11,15 @@ RUN apt-get update && \
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install vllm runpod
+    pip install vllm runpod huggingface-hub
 
-# Copy model from clone stage
-COPY --from=clone /workspace/models /workspace/models
+# Download model using huggingface-hub (more efficient than git)
+RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download('RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8', cache_dir='/workspace/models', local_dir='/workspace/models/Mistral-Small')"
 
 # Copy handler
 WORKDIR /src
 COPY src/handler.py .
 
-# Set default environment variables
 ENV VLLM_MODEL=/workspace/models/Mistral-Small \
     VLLM_TRUST_REMOTE_CODE=true \
     VLLM_ENFORCE_EAGER=true \
