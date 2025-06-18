@@ -1,4 +1,5 @@
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
+
 ENV DEBIAN_FRONTEND=noninteractive \
     TORCHDYNAMO_DISABLE=1 \
     PIP_PREFER_BINARY=1 \
@@ -14,13 +15,13 @@ RUN pip install --upgrade pip && \
     pip install vllm runpod huggingface-hub
 
 # Download model using huggingface-hub (more efficient than git)
-RUN python3 -c "
-from huggingface_hub import snapshot_download
-snapshot_download(
-    'RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8',
-    cache_dir='/workspace/models',
-    local_dir='/workspace/models/Mistral-Small',
-    local_dir_use_symlinks=False
+RUN python3 -c "\
+from huggingface_hub import snapshot_download; \
+snapshot_download( \
+    'RedHatAI/Mistral-Small-3.1-24B-Instruct-2503-quantized.w8a8', \
+    cache_dir='/workspace/models', \
+    local_dir='/workspace/models/Mistral-Small', \
+    local_dir_use_symlinks=False \
 )"
 
 # Copy handler
