@@ -21,7 +21,6 @@ def initialize_llm(input_data):
             "enforce_eager": True,
             "quantization": "compressed-tensors",
             "max_model_len": 8192,
-            "tokenizer_mode": "mistral",  # Important for Mistral Small 3.1
         }
 
         # Override with input args if provided (allows runtime customization)
