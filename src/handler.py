@@ -21,6 +21,7 @@ def initialize_llm(input_data):
             "enforce_eager": True,
             "quantization": "compressed-tensors",
             "max_model_len": 8192,
+            "tokenizer_mode": "mistral",  # Important for Mistral Small 3.1
         }
 
         # Override with input args if provided (allows runtime customization)
@@ -35,32 +36,63 @@ def initialize_llm(input_data):
               '─' * 20, "*Unfortunately, this time is being billed.", sep=os.linesep)
 
 
+def format_chat_messages(messages):
+    """Format chat messages for Mistral Small 3.1 using V7-Tekken template"""
+    system_prompt = ""
+    conversation_parts = []
+
+    for message in messages:
+        role = message.get("role", "")
+        content = message.get("content", "")
+
+        # Handle multimodal content (list format)
+        if isinstance(content, list):
+            text_content = ""
+            for item in content:
+                if item.get("type") == "text":
+                    text_content += item.get("text", "")
+            content = text_content
+
+        if role == "system":
+            system_prompt = content
+        elif role == "user":
+            conversation_parts.append(("user", content))
+        elif role == "assistant":
+            conversation_parts.append(("assistant", content))
+
+    # Build the formatted prompt using V7-Tekken template
+    formatted_prompt = "<s>"
+
+    # Add system prompt if exists
+    if system_prompt:
+        formatted_prompt += f"[SYSTEM_PROMPT]{system_prompt}[/SYSTEM_PROMPT]"
+
+    # Add conversation
+    for i, (role, content) in enumerate(conversation_parts):
+        if role == "user":
+            formatted_prompt += f"[INST]{content}[/INST]"
+            # If this is the last message and it's from user, don't add assistant response
+            if i == len(conversation_parts) - 1:
+                break
+        elif role == "assistant":
+            formatted_prompt += content + "</s>"
+
+    return formatted_prompt
+
+
 def process_batch_requests(batch_data):
-    """Convert batch requests to text prompts"""
+    """Convert batch requests to text prompts with proper formatting"""
     prompts = []
 
     for request in batch_data:
         if "messages" in request:
-            # Handle chat format - convert to single prompt
+            # Handle chat format - use proper Mistral formatting
             messages = request["messages"]
-            text_parts = []
+            formatted_prompt = format_chat_messages(messages)
+            prompts.append(formatted_prompt)
 
-            for message in messages:
-                role = message.get("role", "")
-                content = message.get("content", "")
-
-                if isinstance(content, list):
-                    # Extract text from multimodal content
-                    for item in content:
-                        if item.get("type") == "text":
-                            text_parts.append(f"{role}: {item['text']}")
-                else:
-                    # Simple text content
-                    text_parts.append(f"{role}: {content}")
-
-            # Combine all messages into a single prompt
-            combined_prompt = "\n".join(text_parts)
-            prompts.append(combined_prompt)
+            # Debug: Print the formatted prompt
+            print(f"Formatted prompt: {formatted_prompt[:200]}...")
 
         elif "prompt" in request:
             # Handle simple prompt format
@@ -73,27 +105,35 @@ def process_batch_requests(batch_data):
 
 
 def create_sampling_params(batch_data):
-    """Create sampling parameters from first request"""
+    """Create sampling parameters from first request - only use provided params"""
     first_request = batch_data[0] if batch_data else {}
 
-    params = {
-        "max_tokens": first_request.get("max_tokens", 1024),
-        "temperature": first_request.get("temperature", 0.7),
-        "top_p": first_request.get("top_p", 1.0),
-        "top_k": first_request.get("top_k", -1),
-        "repetition_penalty": first_request.get("repetition_penalty", 1.0),
-        "stop": first_request.get("stop", None),
-    }
+    # Only include parameters that are explicitly provided
+    params = {}
 
-    # Remove None values to avoid errors
-    params = {k: v for k, v in params.items() if v is not None}
+    if "max_tokens" in first_request:
+        params["max_tokens"] = first_request["max_tokens"]
+    if "temperature" in first_request:
+        params["temperature"] = first_request["temperature"]
+    if "top_p" in first_request:
+        params["top_p"] = first_request["top_p"]
+    if "top_k" in first_request:
+        params["top_k"] = first_request["top_k"]
+    if "repetition_penalty" in first_request:
+        params["repetition_penalty"] = first_request["repetition_penalty"]
+    if "stop" in first_request:
+        params["stop"] = first_request["stop"]
 
-    return SamplingParams(**params)
+    print(f"Sampling params (only provided): {params}")  # Debug print
+
+    return SamplingParams(**params) if params else SamplingParams()
 
 
 def handler(job):
     try:
         input_data = job["input"]
+
+        print(f"Received input data: {input_data}")  # Debug print
 
         # Initialize LLM
         initialize_llm(input_data)
@@ -111,27 +151,32 @@ def handler(job):
         if not batch_requests:
             return {"error": "Batch requests list is empty"}
 
+        print(f"Processing {len(batch_requests)} batch requests")
+
         # Process requests to extract text prompts
         prompts = process_batch_requests(batch_requests)
 
         # Debug: Print processed prompts
         print(f"Processing {len(prompts)} text prompts")
         for i, prompt in enumerate(prompts):
-            print(f"Prompt {i}: {prompt[:100]}...")
+            print(f"Full prompt {i}: {prompt}")
 
         # Create sampling parameters
         sampling_params = create_sampling_params(batch_requests)
 
         # Generate responses
-        print(f"Generating responses...")
+        print(f"Generating responses with sampling params: {sampling_params}")
         outputs = llm.generate(prompts, sampling_params)
 
         # Format results
         results = []
         for i, output in enumerate(outputs):
+            generated_text = output.outputs[0].text
+            print(f"Generated text {i}: '{generated_text}'")  # Debug print
+
             result = {
                 "index": i,
-                "text": output.outputs[0].text,
+                "text": generated_text,
                 "finish_reason": output.outputs[0].finish_reason,
                 "prompt_tokens": len(output.prompt_token_ids) if hasattr(output, 'prompt_token_ids') else None,
                 "completion_tokens": len(output.outputs[0].token_ids) if hasattr(output.outputs[0],
